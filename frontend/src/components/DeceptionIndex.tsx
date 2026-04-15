@@ -26,30 +26,34 @@ export default function DeceptionIndex({ score }: { score: number }) {
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 glass-panel relative">
-      <div className="absolute top-4 left-6 text-sm font-bold uppercase tracking-wider text-slate-400">
+    <div className="flex flex-col items-center justify-center p-8 glass-panel h-full relative bg-gradient-to-b from-black/80 to-[#030610]">
+      <div className="absolute top-6 left-8 text-xs font-bold uppercase tracking-widest text-[#00f0ff] drop-shadow-[0_0_5px_rgba(0,240,255,0.6)]">
         Deception Index
       </div>
       
-      <div className="relative w-40 h-40 mt-4 flex items-center justify-center">
+      <div className="relative w-48 h-48 mt-8 flex items-center justify-center rounded-full shadow-[inset_0_10px_30px_rgba(0,0,0,0.8),0_0_20px_rgba(255,255,255,0.05)] bg-[#050a14] border border-white/5">
+        {/* Glow Behind Circle */}
+        <div className={`absolute inset-0 rounded-full blur-2xl opacity-20`} style={{ backgroundColor: strokeColor }}></div>
+        
         {/* Background Circle */}
-        <svg className="w-full h-full transform -rotate-90">
+        <svg className="w-full h-full transform -rotate-90 z-10 drop-shadow-xl">
           <circle
-            cx="80"
-            cy="80"
+            cx="96"
+            cy="96"
             r={radius}
             stroke="currentColor"
-            strokeWidth="10"
+            strokeWidth="12"
             fill="transparent"
-            className="text-slate-800"
+            className="text-[#030610]"
+            style={{ filter: "drop-shadow(inset 0 4px 4px rgba(0,0,0,1))" }}
           />
           {/* Animated Circle */}
           <motion.circle
-            cx="80"
-            cy="80"
+            cx="96"
+            cy="96"
             r={radius}
             stroke={strokeColor}
-            strokeWidth="10"
+            strokeWidth="12"
             fill="transparent"
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
@@ -57,7 +61,7 @@ export default function DeceptionIndex({ score }: { score: number }) {
             transition={{ duration: 1.5, ease: "easeOut" }}
             strokeLinecap="round"
             style={{
-              filter: `drop-shadow(0 0 8px ${strokeColor}88)`
+              filter: `drop-shadow(0 0 12px ${strokeColor}AA)`
             }}
           />
         </svg>

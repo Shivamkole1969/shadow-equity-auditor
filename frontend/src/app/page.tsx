@@ -217,31 +217,34 @@ export default function Home() {
                 {queryMode === "auto" ? (
                   <motion.div key="auto" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                     <div className="relative">
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-1">Target Entity / Ticker</label>
-                      <input 
-                          type="text" 
-                          value={ticker}
-                          onChange={(e) => { setTicker(e.target.value.toUpperCase()); setShowDropdown(true); }}
-                          onFocus={() => { if(searchResults.length) setShowDropdown(true) }}
-                          placeholder="Search Company (e.g., AAPL, NVDA)"
-                          className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-sm font-mono placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] text-white transition-all uppercase"
-                        />
-                        {isSearching && <Loader2 className="absolute right-3 top-[26px] animate-spin text-slate-500" size={16} />}
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-2 pl-1">Target Entity / Ticker</label>
+                      <div className="relative rounded-2xl bg-[#030610] shadow-[inset_0_4px_15px_rgba(0,0,0,0.8),inset_0_-1px_0_rgba(255,255,255,0.05)] border border-white/5 overflow-hidden group">
+                        <div className="absolute inset-y-0 left-0 w-1 bg-[#00f0ff] transform transition-transform group-focus-within:scale-100 scale-0"></div>
+                        <input 
+                            type="text" 
+                            value={ticker}
+                            onChange={(e) => { setTicker(e.target.value.toUpperCase()); setShowDropdown(true); }}
+                            onFocus={() => { if(searchResults.length) setShowDropdown(true) }}
+                            placeholder="SEARCH COMPANY (E.G. AAPL, NVDA)"
+                            className="w-full bg-transparent px-5 py-4 text-sm font-mono placeholder:text-slate-600 focus:outline-none text-white tracking-widest uppercase"
+                          />
+                      </div>
+                        {isSearching && <Loader2 className="absolute right-4 top-[35px] animate-spin text-[#00f0ff]" size={16} />}
                         
                         {/* AutoComplete Dropdown */}
                         {showDropdown && searchResults.length > 0 && (
-                          <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0f1a] border border-white/20 rounded-lg shadow-xl z-50 overflow-hidden">
+                          <div className="absolute top-full left-0 w-full mt-2 bg-[#060a16] border border-white/10 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.9)] z-50 overflow-hidden backdrop-blur-3xl">
                             {searchResults.map((res: any, idx) => (
                               <div 
                                 key={idx} 
                                 onClick={() => selectTicker(res.symbol)}
-                                className="px-4 py-3 hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0 flex justify-between items-center"
+                                className="px-5 py-4 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 flex justify-between items-center transition-colors"
                               >
                                 <div>
-                                  <div className="font-bold text-[#00f0ff]">{res.symbol}</div>
-                                  <div className="text-xs text-slate-400">{res.name}</div>
+                                  <div className="font-bold text-[#00f0ff] text-lg tracking-wider">{res.symbol}</div>
+                                  <div className="text-xs text-slate-400 mt-1">{res.name}</div>
                                 </div>
-                                <div className="text-[10px] uppercase font-mono px-2 py-1 bg-black/50 rounded text-slate-300">
+                                <div className="text-[10px] uppercase font-mono px-3 py-1 bg-black/80 shadow-inner rounded-full text-slate-300 border border-white/10">
                                   {res.exchange}
                                 </div>
                               </div>
@@ -252,27 +255,30 @@ export default function Home() {
                   </motion.div>
                 ) : (
                   <motion.div key="manual" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                     <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-1">Upload Documents (PDF / TXT)</label>
-                     <div className="w-full border-2 border-dashed border-white/20 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:border-[#00f0ff] transition-colors cursor-pointer bg-black/40">
-                        <div className="bg-[#00f0ff]/10 p-3 rounded-full mb-2">
-                           <TerminalSquare size={20} className="text-[#00f0ff]" />
+                     <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-2 pl-1">Data Injection Vault</label>
+                     <div className="w-full border-2 border-dashed border-[#00f0ff]/30 rounded-3xl p-8 flex flex-col items-center justify-center text-center hover:border-[#00f0ff] hover:bg-[#00f0ff]/5 transition-all cursor-pointer bg-[#030610] shadow-[inset_0_10px_20px_rgba(0,0,0,0.5)]">
+                        <div className="bg-[#00f0ff]/20 p-4 rounded-full mb-4 shadow-[0_0_20px_rgba(0,240,255,0.4)]">
+                           <TerminalSquare size={24} className="text-[#00f0ff]" />
                         </div>
-                        <p className="text-xs text-white">Drag & drop financial reports</p>
-                        <p className="text-[10px] text-slate-500 mt-1">Accepts multiple standard formats</p>
+                        <p className="text-sm font-bold text-white uppercase tracking-widest">DRAG & DROP REPORTS</p>
+                        <p className="text-[10px] text-slate-500 mt-2 tracking-widest uppercase">Accepts PDF, TXT, CSV Formats</p>
                      </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div>
-                 <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-1 mt-2">Audit Requirement Override</label>
-                 <textarea 
-                    value={requirement}
-                    onChange={(e) => setRequirement(e.target.value)}
-                    placeholder="E.g., Analyze statements regarding AI infrastructure spending and supply chain disruptions."
-                    rows={3}
-                    className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-xs font-sans placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] text-white transition-all resize-none"
-                  />
+              <div className="pt-2">
+                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-2 pl-1">Audit Protocol Initialization Text</label>
+                 <div className="relative rounded-2xl bg-[#030610] shadow-[inset_0_4px_15px_rgba(0,0,0,0.8),inset_0_-1px_0_rgba(255,255,255,0.05)] border border-white/5 overflow-hidden group">
+                   <div className="absolute inset-y-0 left-0 w-1 bg-[#00f0ff] opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                   <textarea 
+                      value={requirement}
+                      onChange={(e) => setRequirement(e.target.value)}
+                      placeholder="Specify cross-reference commands, target metrics, and semantic narrative focus here..."
+                      rows={4}
+                      className="w-full bg-transparent p-5 text-xs font-sans placeholder:text-slate-600 focus:outline-none text-white tracking-wide resize-none leading-relaxed"
+                    />
+                 </div>
               </div>
             </div>
 
