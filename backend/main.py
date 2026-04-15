@@ -61,6 +61,23 @@ async def run_audit():
         ]
     )
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+# Create fallback index route if root is hit
+@app.get("/")
+async def serve_frontend():
+    index_path = os.path.join(os.path.dirname(__file__), "../frontend/out/index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Frontend not built yet. Run npm run build."}
+
+# Mount the static site
+out_dir = os.path.join(os.path.dirname(__file__), "../frontend/out")
+if os.path.exists(out_dir):
+    app.mount("/", StaticFiles(directory=out_dir, html=True), name="static")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
