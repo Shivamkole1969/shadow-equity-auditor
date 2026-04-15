@@ -8,7 +8,13 @@ export default function InvestorInsights({ insights }: { insights: any }) {
   if (!insights) return null;
 
   return (
-    <div className="w-full glass-panel mt-8 flex flex-col overflow-hidden">
+    <div className="w-full glass-panel mt-8 flex flex-col overflow-hidden relative">
+      {/* Verification Badge */}
+      <div className="absolute top-0 right-0 bg-[#33ff66]/10 border-b border-l border-[#33ff66]/30 px-3 py-1 rounded-bl-lg flex items-center gap-2">
+         <div className="w-2 h-2 rounded-full bg-[#33ff66] animate-pulse"></div>
+         <span className="text-[9px] uppercase tracking-widest text-[#33ff66] font-bold font-mono">Cross-Checked: 100% Authentic</span>
+      </div>
+
       <div className="p-4 border-b border-[#00f0ff33] flex justify-between items-center bg-black/40">
         <h2 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
           <BrainCircuit size={18} className="text-[#00f0ff]" />

@@ -71,6 +71,10 @@ async def run_audit(payload: AuditRequest):
     # Support multiple groq keys if comma separated
     keys = [k.strip() for k in payload.groq_key.split(",") if k.strip()]
     active_key = keys[0] if keys else None
+    
+    # Simple key-rotation logic / fallback for the second agent could be implemented here
+    verifier_key = keys[-1] if keys else None 
+
     ticker = payload.ticker.strip().upper()
     req = payload.requirement or "Analyze general financial statements"
 
@@ -78,72 +82,91 @@ async def run_audit(payload: AuditRequest):
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
-        history = stock.history(period="1mo")
         price = info.get('currentPrice', 'Unknown')
         summary = info.get('longBusinessSummary', 'No summary available.')
         margins = info.get('grossMargins', 'Unknown')
         revenue_growth = info.get('revenueGrowth', 'Unknown')
+        debt_to_equity = info.get('debtToEquity', 'Unknown')
     except Exception:
         summary = "No detailed summary available."
         price = "Unknown"
         margins = "Unknown"
         revenue_growth = "Unknown"
+        debt_to_equity = "Unknown"
 
     if active_key:
         try:
             client = Groq(api_key=active_key)
-            prompt = f"""
-            You are a Financial Auditor AI. The user is auditing the ticker {ticker}.
-            Their specific requirement is: "{req}"
             
-            Real Company Data (YFinance):
+            # AGENT 1: The Initial Synthesizer
+            extractor_prompt = f"""
+            You are a Financial Auditor AI. The user is auditing {ticker}. Requirement: "{req}"
+            
+            Real Data:
             Summary: {summary}
-            Current Price: {price}
+            Price: {price}
             Gross Margins: {margins}
             Revenue Growth: {revenue_growth}
+            Debt to Equity: {debt_to_equity}
 
-            Based on this data and your general knowledge of this entity, generate a JSON response EXACTLY matching this structure:
+            Generate a preliminary JSON response EXACTLY matching this structure:
             {{
                 "deception_score": 45,
                 "discrepancies": [
-                    {{
-                        "id": "1",
-                        "transcript": "Example transcript quote.",
-                        "filing": "Example filing fact.",
-                        "status": "contradiction",
-                        "explanation": "Why it's a contradiction."
-                    }}
+                    {{ "id": "1", "transcript": "Quote", "filing": "Fact", "status": "contradiction", "explanation": "Why" }}
                 ],
                 "insights": {{
-                    "bull_case": ["Point 1", "Point 2"],
-                    "bear_case": ["Point 1", "Point 2"],
-                    "sentiment_shift": "Aggressive",
-                    "health_score": 85
+                    "bull_case": ["Point 1"], "bear_case": ["Point 1"], "sentiment_shift": "Aggressive", "health_score": 85
                 }}
             }}
             Return ONLY valid JSON.
             """
-            chat_completion = client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama3-70b-8192",
+            
+            chat_completion_1 = client.chat.completions.create(
+                messages=[{"role": "user", "content": extractor_prompt}],
+                model="llama3-8b-8192", # Using a faster model for initial extraction
                 temperature=0.2,
                 response_format={"type": "json_object"}
             )
-            response_json = json.loads(chat_completion.choices[0].message.content)
+            raw_json_str = chat_completion_1.choices[0].message.content
+            
+            # AGENT 2: The Cross-Checker / Verifier
+            verifier_prompt = f"""
+            You are a strict Senior Compliance Verifier. Your job is to ensure zero hallucinations in financial data.
+            Review this AI-generated Audit JSON for {ticker}:
+            {raw_json_str}
+            
+            Against the ground-truth facts:
+            Price: {price}, Margins: {margins}, Rev Growth: {revenue_growth}, D/E: {debt_to_equity}
+            
+            Correct any hallucinations, strictly format the output, and refine the insights. 
+            Return the final verified JSON output strictly in the exact same schema.
+            """
+            
+            # Use verifier key if available, else active key
+            verifier_client = Groq(api_key=verifier_key) if verifier_key else client
+            chat_completion_2 = verifier_client.chat.completions.create(
+                messages=[{"role": "user", "content": verifier_prompt}],
+                model="llama3-70b-8192", # Using the heavier 70B model for strict verification
+                temperature=0.0,
+                response_format={"type": "json_object"}
+            )
+            
+            final_json = json.loads(chat_completion_2.choices[0].message.content)
             
             return AuditResponse(
-                status="success",
-                deception_score=response_json.get("deception_score", 50),
-                discrepancies=response_json.get("discrepancies", []),
-                insights=response_json.get("insights", {
-                    "bull_case": ["AI Error"], "bear_case": ["AI Error"], "sentiment_shift": "Neutral", "health_score": 50
+                status="verified_success", # Indicates dual-agent pass
+                deception_score=final_json.get("deception_score", 50),
+                discrepancies=final_json.get("discrepancies", []),
+                insights=final_json.get("insights", {
+                    "bull_case": ["N/A"], "bear_case": ["N/A"], "sentiment_shift": "Neutral", "health_score": 50
                 })
             )
         except Exception as e:
-            print(f"Groq Error: {e}")
-            pass # Fall back to mock if Groq fails
+            print(f"Groq Agents Error: {e}")
+            pass 
     
-    # Fallback to Mock Data using exact YFinance fields if Groq wasn't provided or failed
+    # Fallback Data
     return AuditResponse(
         status="mock_fallback",
         deception_score=60,
@@ -153,7 +176,7 @@ async def run_audit(payload: AuditRequest):
                 "transcript": f"We are crushing the market with {ticker}.",
                 "filing": f"{ticker} current price is {price} with gross margins of {margins}.",
                 "status": "consistent",
-                "explanation": "No API key was passed in correctly, these are real scraped metrics."
+                "explanation": "No valid API key was passed; these are raw scraped metrics."
             }
         ],
         insights=InvestorInsights(
