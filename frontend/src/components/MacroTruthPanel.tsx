@@ -4,8 +4,17 @@ import React from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react";
 
-export default function MacroTruthPanel() {
-  const macroData = [
+export interface MacroMetric {
+  id: string;
+  label: string;
+  value: string;
+  trend: string;
+  description: string;
+}
+
+export default function MacroTruthPanel({ macroData }: { macroData?: MacroMetric[] }) {
+  // Fallback defaults if none passed
+  const dataToRender = macroData && macroData.length > 0 ? macroData : [
     {
       id: "gdp",
       label: "Real GDP Growth",
@@ -50,7 +59,7 @@ export default function MacroTruthPanel() {
       </div>
       
       <div className="flex-1 grid grid-cols-2 gap-5 p-6">
-        {macroData.map((data, idx) => (
+        {dataToRender.map((data, idx) => (
           <motion.div 
             key={data.id}
             initial={{ opacity: 0, scale: 0.9 }}

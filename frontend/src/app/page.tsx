@@ -354,7 +354,7 @@ export default function Home() {
                 <TranscriptView data={apiData.discrepancies || []} />
               </div>
               <div className="lg:col-span-1 border-l border-white/5 pl-8">
-                <MacroTruthPanel />
+                <MacroTruthPanel macroData={apiData.macro_data} />
               </div>
             </div>
             
