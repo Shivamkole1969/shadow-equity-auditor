@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+:root {
+  --background: #040914; /* Deep Navy / Charcoal */
+  --foreground: #e2e8f0;
+  
+  --neon-cyan: #00f0ff;
+  --neon-cyan-glow: rgba(0, 240, 255, 0.5);
+  
+  --glass-bg: rgba(10, 15, 30, 0.6);
+  --glass-border: rgba(0, 240, 255, 0.2);
+  
+  --alert-red: #ff3333;
+  --alert-green: #33ff66;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cyan-neon: var(--neon-cyan);
+  --color-glass: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.neon-border {
+  box-shadow: 0 0 10px var(--neon-cyan-glow);
+  border: 1px solid var(--neon-cyan);
+}
+
+.text-glow {
+  text-shadow: 0 0 8px var(--neon-cyan-glow);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--neon-cyan);
+  border-radius: 4px;
+}
