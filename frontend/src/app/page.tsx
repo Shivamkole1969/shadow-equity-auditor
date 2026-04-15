@@ -7,7 +7,8 @@ import DeceptionIndex from "@/components/DeceptionIndex";
 import TranscriptView, { HighlightData } from "@/components/TranscriptView";
 import MacroTruthPanel from "@/components/MacroTruthPanel";
 import InvestorInsights from "@/components/InvestorInsights";
-import { Play, ShieldAlert, Key, Building2, TerminalSquare, AlertCircle, X, ChevronRight, Settings, Loader2 } from "lucide-react";
+import UserGuide from "@/components/UserGuide";
+import { Play, ShieldAlert, Key, Building2, TerminalSquare, AlertCircle, X, ChevronRight, Settings, Loader2, BookOpen } from "lucide-react";
 
 export default function Home() {
   const [status, setStatus] = useState<"steady" | "auditing" | "results">("steady");
@@ -15,6 +16,7 @@ export default function Home() {
   
   // Custom Query States
   const [queryMode, setQueryMode] = useState<"auto" | "manual">("auto");
+  const [isGuideOpen, setGuideOpen] = useState(false);
   
   // Ticker Search States
   const [ticker, setTicker] = useState("");
@@ -31,6 +33,13 @@ export default function Home() {
 
   // Fetched Data
   const [apiData, setApiData] = useState<any>(null);
+
+  // Auto-open guide on first load if no key
+  useEffect(() => {
+    if (!groqKey) {
+      setGuideOpen(true);
+    }
+  }, []);
 
   // Trigger search on debounce
   useEffect(() => {
@@ -98,7 +107,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#040914] text-slate-200 p-6 md:p-12 selection:bg-[#00f0ff] selection:text-black overflow-x-hidden relative">
-      
+      <UserGuide isOpen={isGuideOpen} onClose={() => setGuideOpen(false)} />
+
       {/* Settings Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -164,13 +174,19 @@ export default function Home() {
 
       <header className="flex justify-between items-center mb-8 border-b border-[#00f0ff33] pb-4">
         <div className="flex items-center gap-3">
-          <ShieldAlert className="text-[#00f0ff]" size={36} />
+          <ShieldAlert className="text-[#00f0ff] drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]" size={36} />
           <div>
             <h1 className="text-2xl font-bold uppercase tracking-widest text-glow text-white">Shadow Equity</h1>
             <p className="text-xs tracking-widest text-[#00f0ff] font-mono">Real-Time Auditor // Vector Subsystem</p>
           </div>
         </div>
         <div className="flex gap-4">
+          <button 
+            onClick={() => setGuideOpen(true)}
+            className="flex items-center gap-2 text-sm font-mono text-slate-300 bg-[#00f0ff]/10 px-4 py-2 rounded-lg border border-[#00f0ff]/30 hover:border-[#00f0ff] hover:text-[#00f0ff] transition-all shadow-[0_0_15px_rgba(0,240,255,0.1)]"
+          >
+            <BookOpen size={16} /> User Guide
+          </button>
           <button 
             onClick={() => setSidebarOpen(true)}
             className="flex items-center gap-2 text-sm font-mono text-slate-300 bg-black/30 px-4 py-2 rounded-lg border border-white/10 hover:border-[#00f0ff] hover:text-[#00f0ff] transition-colors"
