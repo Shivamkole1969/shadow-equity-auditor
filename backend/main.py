@@ -37,12 +37,6 @@ class AuditRequest(BaseModel):
     groq_key: str
     sec_key: str = ""
 
-class AuditResponse(BaseModel):
-    status: str
-    deception_score: float
-    discrepancies: list[Discrepancy]
-    insights: InvestorInsights
-
 class MacroMetric(BaseModel):
     id: str
     label: str
@@ -85,45 +79,59 @@ async def run_audit(payload: AuditRequest):
     # Support multiple groq keys if comma separated
     keys = [k.strip() for k in payload.groq_key.split(",") if k.strip()]
     active_key = keys[0] if keys else None
-    
-    # Simple key-rotation logic / fallback for the second agent could be implemented here
     verifier_key = keys[-1] if keys else None 
 
     ticker = payload.ticker.strip().upper()
     req = payload.requirement or "Analyze general financial statements"
 
-    # Fetch Real Data using yfinance
+    # Fetch Real Data using yfinance with enhanced discovery depth
     try:
         stock = yf.Ticker(ticker)
-        info = stock.info
-        price = info.get('currentPrice', 'Unknown')
-        summary = info.get('longBusinessSummary', 'No summary available.')
-        margins = info.get('grossMargins', 'Unknown')
-        revenue_growth = info.get('revenueGrowth', 'Unknown')
-        debt_to_equity = info.get('debtToEquity', 'Unknown')
+        info = stock.info or {}
+        fast = stock.fast_info
         
-        # Dynamic Macro Simulation based on the specific asset profile
-        beta = info.get('beta', 1.0)
-        trailing_pe = info.get('trailingPE', 0)
+        # Priority fallback logic: info object -> fast_info object -> history query
+        price = info.get('currentPrice') or fast.get('last_price') or "N/A"
+        summary = info.get('longBusinessSummary') or f"Target Acquisition: {ticker}. Financial profile active."
+        margins = info.get('grossMargins') or "N/A"
+        revenue_growth = info.get('revenueGrowth') or "N/A"
+        debt_to_equity = info.get('debtToEquity') or "N/A"
+        
+        # Format percentages/decimals for AI Agent readability
+        def fmt_val(v, is_pct=False):
+            if v is None or v == "N/A": return "N/A"
+            try:
+                num = float(v)
+                return f"{num * 100:.2f}%" if is_pct else f"{num:.2f}"
+            except: return str(v)
+
+        clean_price = f"${fmt_val(price)}" if price != "N/A" else "N/A"
+        clean_margins = fmt_val(margins, True)
+        clean_growth = fmt_val(revenue_growth, True)
+        clean_debt = fmt_val(debt_to_equity)
+
+        # Dynamic Macro Simulation based on active profile
+        beta = info.get('beta') or fast.get('year_high') # Using year_high as proxy if beta missing for trend
+        trailing_pe = info.get('trailingPE') or 0
         
         dynamic_macro = [
-            MacroMetric(id="pe", label="Entity P/E Ratio", value=f"{trailing_pe:.1f}" if type(trailing_pe) in [int, float] else "N/A", trend="up" if type(trailing_pe) in [int, float] and trailing_pe > 25 else "down", description="Real-time Valuation"),
-            MacroMetric(id="beta", label="Market Beta", value=f"{beta:.2f}" if type(beta) in [int, float] else "1.0", trend="up" if type(beta) in [int, float] and beta > 1.2 else "neutral", description="Volatility vs S&P500"),
-            MacroMetric(id="debt", label="Debt/Equity", value=f"{debt_to_equity}", trend="down", description="Capital Structure"),
-            MacroMetric(id="rev", label="Rev Growth", value=f"{revenue_growth}", trend="up", description="YoY Trailing")
+            MacroMetric(id="pe", label="Entity P/E Ratio", value=fmt_val(trailing_pe), trend="up" if type(trailing_pe) in [int, float] and trailing_pe > 25 else "down", description="Real-time Valuation"),
+            MacroMetric(id="beta", label="Market Beta", value=fmt_val(info.get('beta')), trend="up" if type(info.get('beta')) in [int, float] and info.get('beta') > 1.2 else "neutral", description="Volatility Profile"),
+            MacroMetric(id="debt", label="Debt/Equity", value=clean_debt, trend="down", description="Capital Leverage"),
+            MacroMetric(id="rev", label="Rev Growth", value=clean_growth, trend="up", description="YoY Trailing")
         ]
         
     except Exception:
-        summary = "No detailed summary available."
-        price = "Unknown"
-        margins = "Unknown"
-        revenue_growth = "Unknown"
-        debt_to_equity = "Unknown"
+        summary = "Profile Discovery Error: External API latency detected."
+        clean_price = "N/A"
+        clean_margins = "N/A"
+        clean_growth = "N/A"
+        clean_debt = "N/A"
         dynamic_macro = [
-            MacroMetric(id="pe", label="Entity P/E Ratio", value="N/A", trend="neutral", description="Valuation"),
-            MacroMetric(id="beta", label="Market Beta", value="N/A", trend="neutral", description="Volatility"),
-            MacroMetric(id="debt", label="Debt/Equity", value="N/A", trend="neutral", description="Structure"),
-            MacroMetric(id="rev", label="Rev Growth", value="N/A", trend="neutral", description="YoY")
+            MacroMetric(id="pe", label="P/E Ratio", value="N/A", trend="neutral", description="Valuation"),
+            MacroMetric(id="beta", label="Beta", value="N/A", trend="neutral", description="Volatility"),
+            MacroMetric(id="debt", label="D/E", value="N/A", trend="neutral", description="Structure"),
+            MacroMetric(id="rev", label="Growth", value="N/A", trend="neutral", description="YoY")
         ]
 
     if active_key:
@@ -136,10 +144,10 @@ async def run_audit(payload: AuditRequest):
             
             Real Data:
             Summary: {summary}
-            Price: {price}
-            Gross Margins: {margins}
-            Revenue Growth: {revenue_growth}
-            Debt to Equity: {debt_to_equity}
+            Price: {clean_price}
+            Gross Margins: {clean_margins}
+            Revenue Growth: {clean_growth}
+            Debt to Equity: {clean_debt}
 
             Generate a preliminary JSON response EXACTLY matching this structure:
             {{
@@ -169,7 +177,7 @@ async def run_audit(payload: AuditRequest):
             {raw_json_str}
             
             Against the ground-truth facts:
-            Price: {price}, Margins: {margins}, Rev Growth: {revenue_growth}, D/E: {debt_to_equity}
+            Price: {clean_price}, Margins: {clean_margins}, Rev Growth: {clean_growth}, D/E: {clean_debt}
             
             Correct any hallucinations, strictly format the output, and refine the insights. 
             Return the final verified JSON output strictly in the exact same schema.
@@ -207,13 +215,13 @@ async def run_audit(payload: AuditRequest):
                     {
                         "id": str(uuid.uuid4()),
                         "transcript": f"{ticker} Management indicated a robust quarter.",
-                        "filing": f"{ticker} trades at {price}. Gross Margins: {margins}. Debt/Equity: {debt_to_equity}",
+                        "filing": f"{ticker} trades at {clean_price}. Gross Margins: {clean_margins}. Debt/Equity: {clean_debt}",
                         "status": "consistent",
                         "explanation": f"API FAILED. Error: {error_msg}. Falling back to raw scraped YFinance facts."
                     }
                 ],
                 insights=InvestorInsights(
-                    bull_case=[f"Real-time scraping succeeded.", f"Revenue Growth: {revenue_growth}"],
+                    bull_case=[f"Real-time scraping succeeded.", f"Revenue Growth: {clean_growth}"],
                     bear_case=[f"AI Inference failed.", f"Reason: {error_msg}"],
                     sentiment_shift="Unknown (Fallback Mode)",
                     health_score=50
@@ -229,13 +237,13 @@ async def run_audit(payload: AuditRequest):
             {
                 "id": str(uuid.uuid4()),
                 "transcript": f"{ticker} is expected to grow its margins significantly this year.",
-                "filing": f"Current actual margins are {margins}. Revenue growth is {revenue_growth}.",
+                "filing": f"Current actual margins are {clean_margins}. Revenue growth is {clean_growth}.",
                 "status": "contradiction",
                 "explanation": "No Groq API key was provided. This is a real-time scraped YFinance comparison without AI synthesis."
             }
         ],
         insights=InvestorInsights(
-            bull_case=[f"Real-time market price verified at {price}."],
+            bull_case=[f"Real-time market price verified at {clean_price}."],
             bear_case=["Requires GROQ API Key for advanced narrative drift detection."],
             sentiment_shift="System Offline",
             health_score=0
