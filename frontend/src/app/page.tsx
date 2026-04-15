@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AuditSphere from "@/components/AuditSphere";
 import DeceptionIndex from "@/components/DeceptionIndex";
 import TranscriptView, { HighlightData } from "@/components/TranscriptView";
 import MacroTruthPanel from "@/components/MacroTruthPanel";
 import InvestorInsights from "@/components/InvestorInsights";
-import { Play, ShieldAlert, Key, Building2, TerminalSquare, AlertCircle, X, ChevronRight, Settings } from "lucide-react";
+import { Play, ShieldAlert, Key, Building2, TerminalSquare, AlertCircle, X, ChevronRight, Settings, Loader2 } from "lucide-react";
 
 export default function Home() {
   const [status, setStatus] = useState<"steady" | "auditing" | "results">("steady");
@@ -15,35 +15,52 @@ export default function Home() {
   
   // Custom Query States
   const [queryMode, setQueryMode] = useState<"auto" | "manual">("auto");
-  const [exchange, setExchange] = useState("NASDAQ");
   
-  // Custom Query States
+  // Ticker Search States
   const [ticker, setTicker] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
   const [requirement, setRequirement] = useState("");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   // API Key States
   const [groqKey, setGroqKey] = useState("");
   const [secApiKey, setSecApiKey] = useState("");
-  
-  const mockHighlights: HighlightData[] = [
-    {
-      id: "1",
-      transcriptText: "Our data center revenue grew exponentially, driving record margins of over 75% this quarter.",
-      filingText: "Data Center segment gross margin was 71.2%, negatively impacted by inventory write-offs.",
-      status: "contradiction",
-      explanation: "Transcript claims margins over 75%, while 10-Q filing explicitly states 71.2% with negative impacts."
-    },
-    {
-      id: "2",
-      transcriptText: "Demand in APAC remains robust, and we expect no slowdown in Q1.",
-      filingText: "We anticipate potential headwinds in select APAC markets due to export restrictions.",
-      status: "contradiction",
-      explanation: "Management claims 'no slowdown' while Risk Factors cite 'potential headwinds' & export curbs."
-    }
-  ];
 
-  const handleAudit = () => {
+  // Fetched Data
+  const [apiData, setApiData] = useState<any>(null);
+
+  // Trigger search on debounce
+  useEffect(() => {
+    if (queryMode !== "auto") return;
+    const delayDebounceFn = setTimeout(() => {
+      if (ticker.length > 0) {
+        setIsSearching(true);
+        fetch(`/search?q=${ticker}`)
+          .then(res => res.json())
+          .then(data => {
+            setSearchResults(data.results || []);
+            setShowDropdown(data.results && data.results.length > 0);
+          })
+          .catch(() => setSearchResults([]))
+          .finally(() => setIsSearching(false));
+      } else {
+        setSearchResults([]);
+        setShowDropdown(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [ticker, queryMode]);
+
+  const selectTicker = (sym: string) => {
+    setTicker(sym);
+    setShowDropdown(false);
+  };
+
+  const handleAudit = async () => {
     if (queryMode === "auto" && !ticker) {
       alert("Please enter a company ticker symbol.");
       return;
@@ -57,11 +74,26 @@ export default function Home() {
     setStatus("auditing");
     setSphereStatus("auditing");
     
-    // Simulate Data Fetch & API calls
-    setTimeout(() => {
+    try {
+      const res = await fetch("/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker: ticker,
+          requirement: requirement,
+          groq_key: groqKey,
+          sec_key: secApiKey
+        })
+      });
+      const data = await res.json();
+      setApiData(data);
       setStatus("results");
-      setSphereStatus("contradiction");
-    }, 4500);
+      setSphereStatus(data.deception_score > 60 ? "contradiction" : "consistent");
+    } catch (err) {
+      alert("Failed to reach processing cluster.");
+      setStatus("steady");
+      setSphereStatus("consistent");
+    }
   };
 
   return (
@@ -96,15 +128,15 @@ export default function Home() {
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Groq API Key (Required)</label>
+                  <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Groq API Keys</label>
                   <input 
                     type="password" 
                     value={groqKey}
                     onChange={(e) => setGroqKey(e.target.value)}
-                    placeholder="gsk_..."
+                    placeholder="gsk_..., gsk_..."
                     className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#00f0ff] text-white transition-colors"
                   />
-                  <p className="text-[10px] text-slate-500 mt-2">Used for ultrafast sub-second LangGraph inference.</p>
+                  <p className="text-[10px] text-slate-500 mt-2">Paste multiple keys separated by commas to load-balance ultrafast LLM calls.</p>
                 </div>
                 
                 <div>
@@ -130,7 +162,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
       <header className="flex justify-between items-center mb-8 border-b border-[#00f0ff33] pb-4">
         <div className="flex items-center gap-3">
           <ShieldAlert className="text-[#00f0ff]" size={36} />
@@ -150,11 +181,8 @@ export default function Home() {
       </header>
 
       <main className="max-w-[1400px] mx-auto space-y-8">
-        
-        {/* Top Section: Hero Sphere & Controls */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Intelligence Query */}
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -164,7 +192,6 @@ export default function Home() {
               <span className="flex items-center gap-2"><TerminalSquare size={18} className="text-[#00f0ff]"/> Intelligence Query</span>
             </h2>
 
-            {/* Mode Switcher */}
             <div className="flex items-center bg-black/50 p-1 rounded-lg border border-white/10 mb-5 relative">
                <button 
                  onClick={() => setQueryMode("auto")} 
@@ -186,36 +213,41 @@ export default function Home() {
             </div>
             
             <div className="space-y-4 flex-1">
-              
               <AnimatePresence mode="wait">
                 {queryMode === "auto" ? (
                   <motion.div key="auto" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-1">
-                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Exchange</label>
-                        <select 
-                          value={exchange}
-                          onChange={(e) => setExchange(e.target.value)}
-                          className="w-full bg-black/60 border border-white/20 rounded-lg px-2 py-3 text-sm font-mono text-white focus:outline-none focus:border-[#00f0ff] transition-all"
-                        >
-                          <option value="NASDAQ">NASDAQ</option>
-                          <option value="NYSE">NYSE</option>
-                          <option value="LSE">LSE</option>
-                          <option value="NSE">NSE (India)</option>
-                          <option value="BSE">BSE (India)</option>
-                          <option value="TSX">TSX (Canada)</option>
-                        </select>
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-1">Target Entity / Ticker</label>
-                        <input 
-                            type="text" 
-                            value={ticker}
-                            onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                            placeholder="e.g., AAPL, NVDA"
-                            className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-sm font-mono placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] text-white transition-all uppercase"
-                          />
-                      </div>
+                    <div className="relative">
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-1">Target Entity / Ticker</label>
+                      <input 
+                          type="text" 
+                          value={ticker}
+                          onChange={(e) => { setTicker(e.target.value.toUpperCase()); setShowDropdown(true); }}
+                          onFocus={() => { if(searchResults.length) setShowDropdown(true) }}
+                          placeholder="Search Company (e.g., AAPL, NVDA)"
+                          className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-sm font-mono placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] text-white transition-all uppercase"
+                        />
+                        {isSearching && <Loader2 className="absolute right-3 top-[26px] animate-spin text-slate-500" size={16} />}
+                        
+                        {/* AutoComplete Dropdown */}
+                        {showDropdown && searchResults.length > 0 && (
+                          <div className="absolute top-full left-0 w-full mt-1 bg-[#0a0f1a] border border-white/20 rounded-lg shadow-xl z-50 overflow-hidden">
+                            {searchResults.map((res: any, idx) => (
+                              <div 
+                                key={idx} 
+                                onClick={() => selectTicker(res.symbol)}
+                                className="px-4 py-3 hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0 flex justify-between items-center"
+                              >
+                                <div>
+                                  <div className="font-bold text-[#00f0ff]">{res.symbol}</div>
+                                  <div className="text-xs text-slate-400">{res.name}</div>
+                                </div>
+                                <div className="text-[10px] uppercase font-mono px-2 py-1 bg-black/50 rounded text-slate-300">
+                                  {res.exchange}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   </motion.div>
                 ) : (
@@ -260,7 +292,6 @@ export default function Home() {
             </button>
           </motion.div>
           
-          {/* Audit Sphere */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -277,7 +308,7 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 className="absolute bottom-4 text-[#00f0ff] font-mono text-xs uppercase tracking-widest bg-black/60 px-4 py-2 rounded-full border border-[#00f0ff33]"
               >
-                MCP Link Established: Pulling Form 10-K...
+                Connecting via MCP to Global Markets...
               </motion.div>
             )}
             
@@ -288,14 +319,13 @@ export default function Home() {
             )}
           </motion.div>
 
-          {/* Deception Index */}
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="h-full"
           >
-            {status === "results" ? (
-               <DeceptionIndex score={82} />
+            {status === "results" && apiData ? (
+               <DeceptionIndex score={apiData.deception_score} />
             ) : (
               <div className="glass-panel h-full flex flex-col items-center justify-center p-6 text-slate-500 font-mono text-center text-sm border border-dashed border-white/10">
                 <ShieldAlert size={48} className="mb-4 opacity-20" />
@@ -306,8 +336,7 @@ export default function Home() {
 
         </section>
 
-        {/* Bottom Section: Transcript, Macro, & AI Summary */}
-        {status === "results" && (
+        {status === "results" && apiData && (
           <motion.section 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -316,14 +345,14 @@ export default function Home() {
           >
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2">
-                <TranscriptView data={mockHighlights} />
+                <TranscriptView data={apiData.discrepancies || []} />
               </div>
               <div className="lg:col-span-1 border-l border-white/5 pl-8">
                 <MacroTruthPanel />
               </div>
             </div>
             
-            <InvestorInsights />
+            <InvestorInsights insights={apiData.insights} />
 
           </motion.section>
         )}
