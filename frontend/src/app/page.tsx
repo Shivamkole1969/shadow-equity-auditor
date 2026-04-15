@@ -14,6 +14,10 @@ export default function Home() {
   const [sphereStatus, setSphereStatus] = useState<"consistent" | "auditing" | "contradiction">("consistent");
   
   // Custom Query States
+  const [queryMode, setQueryMode] = useState<"auto" | "manual">("auto");
+  const [exchange, setExchange] = useState("NASDAQ");
+  
+  // Custom Query States
   const [ticker, setTicker] = useState("");
   const [requirement, setRequirement] = useState("");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -40,7 +44,7 @@ export default function Home() {
   ];
 
   const handleAudit = () => {
-    if (!ticker) {
+    if (queryMode === "auto" && !ticker) {
       alert("Please enter a company ticker symbol.");
       return;
     }
@@ -104,7 +108,7 @@ export default function Home() {
                 </div>
                 
                 <div>
-                  <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">SEC EDGAR Token (Optional)</label>
+                  <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Global Market Token (Optional)</label>
                   <input 
                     type="password" 
                     value={secApiKey}
@@ -112,7 +116,7 @@ export default function Home() {
                     placeholder="sk_..."
                     className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#00f0ff] text-white transition-colors"
                   />
-                  <p className="text-[10px] text-slate-500 mt-2">By default, standard public rate limits apply.</p>
+                  <p className="text-[10px] text-slate-500 mt-2">Overrides rate limits for multiple global exchanges.</p>
                 </div>
               </div>
 
@@ -154,32 +158,88 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-panel p-6 flex flex-col"
+            className="glass-panel p-6 flex flex-col relative"
           >
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-6 border-b border-[#00f0ff33] pb-2 flex items-center gap-2">
-              <TerminalSquare size={18} className="text-[#00f0ff]"/> Intelligence Query
+            <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-4 border-b border-[#00f0ff33] pb-2 flex items-center justify-between">
+              <span className="flex items-center gap-2"><TerminalSquare size={18} className="text-[#00f0ff]"/> Intelligence Query</span>
             </h2>
+
+            {/* Mode Switcher */}
+            <div className="flex items-center bg-black/50 p-1 rounded-lg border border-white/10 mb-5 relative">
+               <button 
+                 onClick={() => setQueryMode("auto")} 
+                 className={`flex-1 text-xs font-bold uppercase tracking-wider py-2 rounded-md transition-colors z-10 ${queryMode === "auto" ? "text-black" : "text-slate-400 hover:text-white"}`}
+               >
+                 Auto-Fetch
+               </button>
+               <button 
+                 onClick={() => setQueryMode("manual")} 
+                 className={`flex-1 text-xs font-bold uppercase tracking-wider py-2 rounded-md transition-colors z-10 ${queryMode === "manual" ? "text-black" : "text-slate-400 hover:text-white"}`}
+               >
+                 Manual Upload
+               </button>
+               <motion.div 
+                 className="absolute inset-y-1 w-[calc(50%-4px)] bg-[#00f0ff] rounded-md z-0 shadow-[0_0_10px_rgba(0,240,255,0.3)]"
+                 animate={{ left: queryMode === "auto" ? "4px" : "calc(50%)" }}
+                 transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+               />
+            </div>
             
-            <div className="space-y-5 flex-1">
-              <div>
-                 <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#00f0ff] mb-2"><Building2 size={14} /> Target Entity</label>
-                 <input 
-                    type="text" 
-                    value={ticker}
-                    onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                    placeholder="Enter Ticker (e.g., AAPL, NVDA)"
-                    className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-4 text-lg font-mono placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] text-white transition-all uppercase"
-                  />
-              </div>
+            <div className="space-y-4 flex-1">
+              
+              <AnimatePresence mode="wait">
+                {queryMode === "auto" ? (
+                  <motion.div key="auto" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Exchange</label>
+                        <select 
+                          value={exchange}
+                          onChange={(e) => setExchange(e.target.value)}
+                          className="w-full bg-black/60 border border-white/20 rounded-lg px-2 py-3 text-sm font-mono text-white focus:outline-none focus:border-[#00f0ff] transition-all"
+                        >
+                          <option value="NASDAQ">NASDAQ</option>
+                          <option value="NYSE">NYSE</option>
+                          <option value="LSE">LSE</option>
+                          <option value="NSE">NSE (India)</option>
+                          <option value="BSE">BSE (India)</option>
+                          <option value="TSX">TSX (Canada)</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-1">Target Entity / Ticker</label>
+                        <input 
+                            type="text" 
+                            value={ticker}
+                            onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                            placeholder="e.g., AAPL, NVDA"
+                            className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-sm font-mono placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] text-white transition-all uppercase"
+                          />
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div key="manual" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                     <label className="block text-[10px] font-bold uppercase tracking-widest text-[#00f0ff] mb-1">Upload Documents (PDF / TXT)</label>
+                     <div className="w-full border-2 border-dashed border-white/20 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:border-[#00f0ff] transition-colors cursor-pointer bg-black/40">
+                        <div className="bg-[#00f0ff]/10 p-3 rounded-full mb-2">
+                           <TerminalSquare size={20} className="text-[#00f0ff]" />
+                        </div>
+                        <p className="text-xs text-white">Drag & drop financial reports</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Accepts multiple standard formats</p>
+                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <div>
-                 <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-300 mb-2">Audit Requirement</label>
+                 <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-1 mt-2">Audit Requirement Override</label>
                  <textarea 
                     value={requirement}
                     onChange={(e) => setRequirement(e.target.value)}
-                    placeholder="E.g., Analyze statements regarding AI infrastructure spending and supply chain disruptions. Summarize core narrative drift."
-                    rows={4}
-                    className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-sm font-sans placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] text-white transition-all resize-none"
+                    placeholder="E.g., Analyze statements regarding AI infrastructure spending and supply chain disruptions."
+                    rows={3}
+                    className="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-xs font-sans placeholder:text-slate-600 focus:outline-none focus:border-[#00f0ff] text-white transition-all resize-none"
                   />
               </div>
             </div>
@@ -187,12 +247,12 @@ export default function Home() {
             <button 
               onClick={handleAudit}
               disabled={status === "auditing"}
-              className="mt-6 w-full py-4 rounded-xl font-bold uppercase tracking-widest bg-[#00f0ff]/10 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-5 w-full py-3 rounded-xl font-bold uppercase tracking-widest bg-[#00f0ff]/10 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {status === "auditing" ? (
                 <div className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                  Fetching SEC Data & Auditing...
+                  Processing...
                 </div>
               ) : (
                 <>Deploy Agents <ChevronRight size={18}/></>
