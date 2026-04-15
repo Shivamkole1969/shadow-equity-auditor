@@ -19,7 +19,7 @@ RUN npm run build
 
 # Setup backend
 WORKDIR /app/backend
-RUN pip install --no-cache-dir fastapi uvicorn pydantic groq chromadb pymupdf4llm langgraph uvicorn[standard] python-multipart openai
+RUN pip install --no-cache-dir fastapi uvicorn pydantic groq chromadb pymupdf4llm langgraph uvicorn[standard] python-multipart openai yfinance requests
 
 # A simple bash script to bridge the two: actually HF spaces allows running an entrypoint.
 # We can use a unified starter script.
